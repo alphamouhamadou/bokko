@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  phone         String   @unique
+  password      String
+  name          String
+  role          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  licenseNumber   String?
+  licenseExpiry   DateTime?
+  photoUrl        String?
+  bio             String?
+  experience      Int?
+  totalTrips      Int      @default(0)
+  averageRating   Float    @default(0)
+  totalRatings    Int      @default(0)
+  waveBusinessLink String?
+  resetToken     String?
+  resetExpires   DateTime?
+  isBlocked      Boolean  @default(false)
+  blockedReason  String?
+  blockedAt      DateTime?
+  
+  trips         Trip[]
+  reservations  Reservation[]
+  vehicle       Vehicle?
+  notifications Notification[]
+  ratingsGiven  Rating[] @relation("RatingFrom")
+  ratingsReceived Rating[] @relation("RatingTo")
+  tripShares    TripShare[]
+  packages      Package[]
+  reportsMade   Report[] @relation("ReportFrom")
+  reportsReceived Report[] @relation("ReportTo")
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  brand       String
+  model       String
+  color       String
+  plateNumber String
+  capacity    Int
+  driverId    String   @unique
+  driver      User     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Trip {
+  id              String   @id @default(cuid())
+  driverId        String
+  origin          String
+  destination     String
+  departureTime   DateTime
+  pricePerSeat    Int
+  availableSeats  Int
+  tripType        String
+  status          String   @default("ACTIVE")
+  description     String?
+  acceptsPackages Boolean  @default(false)
+  packagePricePerKg Int    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  driver          User         @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  reservations    Reservation[]
+  ratings         Rating[]
+  shares          TripShare[]
+  packages        Package[]
+}
+
+model Package {
+  id                String   @id @default(cuid())
+  tripId            String
+  senderId          String
+  status            String   @default("PENDING")
+  description       String
+  weight            Float
+  size              String   @default("M") // S, M, L, XL
+  senderName        String
+  senderPhone       String
+  recipientName     String
+  recipientPhone    String
+  recipientAddress  String
+  amount            Int
+  paymentStatus     String   @default("PENDING")
+  paymentMethod     String?
+  paidAt            DateTime?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  trip              Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  sender            User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model Reservation {
+  id              String   @id @default(cuid())
+  tripId          String
+  passengerId     String
+  status          String   @default("PENDING")
+  seatsBooked     Int      @default(1)
+  paymentStatus   String   @default("PENDING")
+  paymentMethod   String?
+  paidAt          DateTime?
+  exactDestination String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passenger   User     @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String
+  reportedId  String
+  reason      String
+  description String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reporter    User     @relation("ReportFrom", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported    User     @relation("ReportTo", fields: [reportedId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  title       String
+  message     String
+  read        Boolean  @default(false)
+  data        String?
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Rating {
+  id          String   @id @default(cuid())
+  fromUserId  String
+  toUserId    String
+  tripId      String
+  score       Int
+  comment     String?
+  createdAt   DateTime @default(now())
+  
+  fromUser    User     @relation("RatingFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User     @relation("RatingTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model TripShare {
+  id          String   @id @default(cuid())
+  tripId      String
+  passengerId String
+  shareCode   String   @unique
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passenger   User     @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+}
