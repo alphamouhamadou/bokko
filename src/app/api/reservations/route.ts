@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { tripId, passengerId, seatsBooked, exactDestination } = body
+    const { tripId, passengerId, seatsBooked, exactDestination, exactDestinationLat, exactDestinationLon } = body
 
     if (!tripId || !passengerId) {
       return NextResponse.json(
@@ -131,6 +131,8 @@ export async function POST(request: NextRequest) {
         passengerId,
         seatsBooked: seats,
         exactDestination: exactDestination || null,
+        exactDestinationLat: exactDestinationLat || null,
+        exactDestinationLon: exactDestinationLon || null,
       },
       include: {
         trip: {
@@ -146,7 +148,6 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Notify driver about new reservation
     try {
       await db.notification.create({
         data: {

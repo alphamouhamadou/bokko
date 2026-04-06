@@ -1,6 +1,7 @@
 'use client'
 
-import { Car, MapPin, Bell } from 'lucide-react'
+import Image from 'next/image'
+import { MapPin, Bell } from 'lucide-react'
 import { useAppStore } from '@/store/store'
 import { useEffect } from 'react'
 
@@ -29,8 +30,8 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-lg mx-auto flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-[#006233] rounded-xl flex items-center justify-center shadow-md">
-            <Car className="w-6 h-6 text-[#FFD700]" />
+          <div className="w-10 h-10 bg-[#006233] rounded-xl flex items-center justify-center shadow-md overflow-hidden">
+            <Image src="/logo.png" alt="BOKKO" width={40} height={40} className="rounded-lg" style={{ width: 'auto', height: '100%' }} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-[#006233] leading-tight">BOKKO</h1>

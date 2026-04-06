@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useAppStore } from '@/store/store'
 
 export default function HomePage() {
@@ -10,8 +11,8 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
         {/* Logo */}
-        <div className="w-24 h-24 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center mb-6 shadow-lg border border-white/20">
-          <span className="text-5xl">🚗</span>
+        <div className="w-28 h-28 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center mb-6 shadow-lg border border-white/20 overflow-hidden">
+          <Image src="/logo.png" alt="BOKKO" width={112} height={112} className="rounded-2xl" loading="eager" />
         </div>
 
         {/* App Name */}

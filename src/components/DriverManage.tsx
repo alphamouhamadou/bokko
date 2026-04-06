@@ -1,13 +1,138 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { MapPin, Clock, User, Phone, Check, X, Loader2, ListChecks, CreditCard, ShieldCheck, Banknote } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { MapPin, Clock, User, Phone, Check, X, Loader2, ListChecks, CreditCard, ShieldCheck, Banknote, Navigation, RefreshCw } from 'lucide-react'
 import { useAppStore } from '@/store/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import ContactButtons from '@/components/ContactButtons'
+
+/* ─── Passenger Live Location Component ─── */
+function PassengerLocationView({ reservationId }: { reservationId: string }) {
+  const [location, setLocation] = useState<{ lat: number; lon: number; address: string; updatedAt: string } | null>(null)
+  const [sharing, setSharing] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
+
+  const fetchLocation = useCallback(async () => {
+    setLoading(true)
+    setError(false)
+    try {
+      const res = await fetch(`/api/reservations/${reservationId}/location`)
+      const data = await res.json()
+      setSharing(data.sharing)
+      setLocation(data.location)
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [reservationId])
+
+  useEffect(() => {
+    fetchLocation()
+    const interval = setInterval(fetchLocation, 30000)
+    return () => clearInterval(interval)
+  }, [fetchLocation])
+
+  const timeAgo = location?.updatedAt
+    ? Math.floor((Date.now() - new Date(location.updatedAt).getTime()) / 1000)
+    : null
+
+  const formatTimeAgo = (seconds: number) => {
+    if (seconds < 60) return `il y a ${seconds}s`
+    if (seconds < 3600) return `il y a ${Math.floor(seconds / 60)}min`
+    return `il y a ${Math.floor(seconds / 3600)}h`
+  }
+
+  const openInMaps = () => {
+    if (!location) return
+    window.open(`https://www.google.com/maps?q=${location.lat},${location.lon}`, '_blank')
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-[#006233]/5 to-[#FFD700]/5 rounded-2xl p-3 border border-[#006233]/10">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <MapPin className={`w-4 h-4 ${sharing ? 'text-[#006233] animate-pulse' : 'text-gray-400'}`} />
+          <span className="text-xs font-semibold text-gray-700">
+            {sharing ? 'Position en direct' : 'Position non partagée'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {timeAgo !== null && (
+            <span className="text-[10px] text-gray-400">
+              {formatTimeAgo(timeAgo)}
+            </span>
+          )}
+          <button onClick={fetchLocation} disabled={loading} className="text-gray-400 hover:text-[#006233] transition-colors">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {loading && !location && (
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <Loader2 className="w-3 h-3 animate-spin" /> Chargement...
+        </div>
+      )}
+
+      {error && <p className="text-xs text-red-500">Erreur de chargement</p>}
+
+      {!loading && !sharing && (
+        <p className="text-[11px] text-gray-400">Le passager n&apos;a pas encore activé le partage de position</p>
+      )}
+
+      {location && (
+        <>
+          <p className="text-xs text-gray-600 flex items-center gap-1 mb-2">
+            <Navigation className="w-3 h-3 text-[#006233]" />
+            {location.address || `${location.lat.toFixed(5)}, ${location.lon.toFixed(5)}`}
+          </p>
+          <button
+            onClick={openInMaps}
+            className="w-full py-2 rounded-xl text-xs font-semibold bg-[#006233] text-white hover:bg-[#006233]/90 transition-all flex items-center justify-center gap-1.5 active:scale-95"
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            Voir position passager
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+/* ─── Navigate to Destination Button ─── */
+function NavigateToDestination({ address, lat, lon }: { address?: string | null; lat?: number | null; lon?: number | null }) {
+  if (!address && lat === null) return null
+
+  const navigate = () => {
+    if (lat && lon) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank')
+    } else if (address) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`, '_blank')
+    }
+  }
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={navigate}
+        className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[#FFD700] text-[#006233] hover:bg-[#FFD700]/90 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm"
+      >
+        <Navigation className="w-4 h-4" />
+        Naviguer vers la destination
+      </button>
+      {address && (
+        <p className="text-[10px] text-gray-400 text-center mt-1 flex items-center justify-center gap-1">
+          <MapPin className="w-3 h-3" /> {address}
+        </p>
+      )}
+    </div>
+  )
+}
 
 interface ReservationData {
   id: string
@@ -18,6 +143,8 @@ interface ReservationData {
   seatsBooked: number
   createdAt: string
   exactDestination?: string | null
+  exactDestinationLat?: number | null
+  exactDestinationLon?: number | null
   trip: {
     id: string
     origin: string
@@ -171,7 +298,6 @@ export default function DriverManage() {
                   return (
                     <Card key={res.id} className="border-0 shadow-sm border-l-4 border-l-[#FFD700] rounded-2xl">
                       <CardContent className="p-4 space-y-3">
-                        {/* Status row */}
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{statusInfo.icon} {statusInfo.text}</span>
                           {paymentInfo && (
@@ -181,7 +307,6 @@ export default function DriverManage() {
                           )}
                         </div>
 
-                        {/* Passenger name (BIG) */}
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 bg-[#006233]/10 rounded-2xl flex items-center justify-center">
                             <span className="text-xl">👤</span>
@@ -195,7 +320,6 @@ export default function DriverManage() {
                           <ContactButtons phone={res.passenger.phone} variant="compact" context="driver-to-passenger" />
                         </div>
 
-                        {/* Route + Price */}
                         <div className="flex items-center justify-between">
                           <div className="text-sm text-gray-600">
                             <span className="font-semibold">{res.trip.origin} → {res.trip.destination}</span>
@@ -209,7 +333,6 @@ export default function DriverManage() {
                           </p>
                         </div>
 
-                        {/* Action buttons */}
                         <div className="flex gap-2 pt-1">
                           <Button
                             size="sm"
@@ -217,11 +340,7 @@ export default function DriverManage() {
                             disabled={updating === res.id}
                             className="flex-1 min-h-[48px] rounded-2xl bg-[#006233] hover:bg-[#006233]/90 text-white font-bold text-sm"
                           >
-                            {updating === res.id ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                              '✅ CONFIRMER'
-                            )}
+                            {updating === res.id ? <Loader2 className="w-5 h-5 animate-spin" /> : '✅ CONFIRMER'}
                           </Button>
                           <Button
                             size="sm"
@@ -230,11 +349,7 @@ export default function DriverManage() {
                             disabled={updating === res.id}
                             className="flex-1 min-h-[48px] rounded-2xl text-sm font-bold text-[#CE1126] border-2 border-[#CE1126]/30 hover:bg-[#CE1126]/10"
                           >
-                            {updating === res.id ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                              '❌ REFUSER'
-                            )}
+                            {updating === res.id ? <Loader2 className="w-5 h-5 animate-spin" /> : '❌ REFUSER'}
                           </Button>
                         </div>
                       </CardContent>
@@ -283,15 +398,10 @@ export default function DriverManage() {
                           <span className="text-[#006233] font-bold ml-3">{(res.trip.pricePerSeat * res.seatsBooked).toLocaleString()} FCFA</span>
                         </div>
 
-                        {/* Confirm Payment for PAID */}
                         {res.paymentStatus === 'PAID' && res.status === 'CONFIRMED' && (
                           <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                             <p className={`text-xs font-semibold flex items-center gap-1 ${res.paymentMethod === 'CASH' ? 'text-[#B8960F]' : 'text-[#1DC3E3]'}`}>
-                              {res.paymentMethod === 'CASH' ? (
-                                <Banknote className="w-3 h-3" />
-                              ) : (
-                                <CreditCard className="w-3 h-3" />
-                              )}
+                              {res.paymentMethod === 'CASH' ? <Banknote className="w-3 h-3" /> : <CreditCard className="w-3 h-3" />}
                               {res.paymentMethod === 'CASH' ? '💵' : '💙'} {(res.trip.pricePerSeat * res.seatsBooked).toLocaleString()} FCFA reçus {res.paymentMethod === 'CASH' ? 'en espèces' : 'via Wave'}
                             </p>
                             <Button
@@ -300,11 +410,7 @@ export default function DriverManage() {
                               disabled={updating === res.id}
                               className="h-10 rounded-xl bg-[#006233] hover:bg-[#006233]/90 text-white text-xs font-bold gap-1"
                             >
-                              {updating === res.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                              )}
+                              {updating === res.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                               Confirmer
                             </Button>
                           </div>
@@ -316,6 +422,22 @@ export default function DriverManage() {
                             <p className="text-xs text-[#006233] font-medium">
                               Paiement de {(res.trip.pricePerSeat * res.seatsBooked).toLocaleString()} FCFA confirmé
                             </p>
+                          </div>
+                        )}
+
+                        {/* Navigate to destination */}
+                        {res.status === 'CONFIRMED' && (
+                          <NavigateToDestination
+                            address={res.exactDestination}
+                            lat={res.exactDestinationLat}
+                            lon={res.exactDestinationLon}
+                          />
+                        )}
+
+                        {/* Live location for confirmed reservations */}
+                        {res.status === 'CONFIRMED' && (
+                          <div className="mt-2">
+                            <PassengerLocationView reservationId={res.id} />
                           </div>
                         )}
                       </CardContent>

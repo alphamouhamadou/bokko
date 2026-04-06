@@ -113,7 +113,9 @@ model Reservation {
   paymentStatus   String   @default("PENDING")
   paymentMethod   String?
   paidAt          DateTime?
-  exactDestination String?
+  exactDestination    String?
+  exactDestinationLat Float?
+  exactDestinationLon Float?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   

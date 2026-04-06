@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     siteName: "BOKKO",
   },
   icons: {
-    icon: "/icons/icon-192x192.png",
+    icon: "/favicon.ico",
     apple: "/icons/icon-192x192.png",
   },
 };
@@ -57,6 +57,7 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="icon" href="/favicon.ico" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#006233" />

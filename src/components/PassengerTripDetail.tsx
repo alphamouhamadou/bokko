@@ -51,6 +51,11 @@ export default function PassengerTripDetail() {
   const [exactDestination, setExactDestination] = useState('')
   const [customDestination, setCustomDestination] = useState('')
   const [gpsAddress, setGpsAddress] = useState('')
+  const [gpsLat, setGpsLat] = useState<number | null>(null)
+  const [gpsLon, setGpsLon] = useState<number | null>(null)
+  const [destGpsAddress, setDestGpsAddress] = useState('')
+  const [destLat, setDestLat] = useState<number | null>(null)
+  const [destLon, setDestLon] = useState<number | null>(null)
 
   useEffect(() => {
     if (selectedTrip?.id) {
@@ -89,12 +94,14 @@ export default function PassengerTripDetail() {
 
   const getExactDestinations = () => {
     if (!trip) return []
-    // The destination city is where passenger wants to be dropped off
     const destinationCity = trip.destination
     return EXACT_DESTINATIONS[destinationCity] || []
   }
 
-  const finalExactDestination = exactDestination === 'Autre' ? customDestination.trim() : (exactDestination || gpsAddress)
+  // GPS destination overrides preset/custom selection
+  const finalExactDestination = destGpsAddress || (exactDestination === 'Autre' ? customDestination.trim() : (exactDestination || gpsAddress))
+  const finalDestLat = destLat || null
+  const finalDestLon = destLon || null
 
   const handleBook = async () => {
     if (!user || !trip) return
@@ -108,7 +115,14 @@ export default function PassengerTripDetail() {
       const res = await fetch('/api/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tripId: trip.id, passengerId: user.id, seatsBooked: seats, exactDestination: finalExactDestination || null }),
+        body: JSON.stringify({
+          tripId: trip.id,
+          passengerId: user.id,
+          seatsBooked: seats,
+          exactDestination: finalExactDestination || null,
+          exactDestinationLat: finalDestLat,
+          exactDestinationLon: finalDestLon,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -273,7 +287,6 @@ export default function PassengerTripDetail() {
                 </div>
               </div>
 
-              {/* Contact buttons */}
               {!isOwnTrip && (
                 <div className="mt-3">
                   <ContactButtons
@@ -324,38 +337,52 @@ export default function PassengerTripDetail() {
               </CardContent>
             </Card>
 
-            {/* GPS Location picker */}
+            {/* GPS Location picker - Departure */}
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
                 <LocationPicker
                   label="📍 Votre point de départ (GPS)"
                   placeholder="Ex: Marché Sandaga, Dakar..."
-                  onSelect={(data) => setGpsAddress(data.address)}
+                  onSelect={(data) => { setGpsAddress(data.address); setGpsLat(data.lat); setGpsLon(data.lon) }}
                   currentAddress={gpsAddress}
                 />
               </CardContent>
             </Card>
 
-            {/* Exact destination picker */}
+            {/* GPS Location picker - Destination */}
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <LocationPicker
+                  label="📍 Votre destination exacte (GPS)"
+                  placeholder="Ex: Dakar Plateau, arrêt bus..."
+                  onSelect={(data) => { setDestGpsAddress(data.address); setDestLat(data.lat); setDestLon(data.lon); setExactDestination(''); setCustomDestination('') }}
+                  currentAddress={destGpsAddress}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Exact destination presets */}
             {getExactDestinations().length > 0 && (
               <Card className="border-0 shadow-sm">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">📍</span>
-                    <span className="text-sm font-semibold text-gray-700">Où souhaitez-vous être déposé ?</span>
+                    <span className="text-sm font-semibold text-gray-700">Ou choisissez un quartier :</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {getExactDestinations().map((dest) => (
                       <button
                         key={dest}
-                        onClick={() => { setExactDestination(dest === exactDestination ? '' : dest); if (dest !== 'Autre') setCustomDestination('') }}
+                        onClick={() => { setExactDestination(dest === exactDestination ? '' : dest); if (dest !== 'Autre') setCustomDestination(''); setDestGpsAddress(''); setDestLat(null); setDestLon(null) }}
                         className={`px-3 py-2.5 rounded-2xl text-xs font-semibold transition-all min-h-[44px] ${
-                          exactDestination === dest
-                            ? 'bg-[#006233] text-white shadow-lg'
+                          (exactDestination && !destGpsAddress) === (exactDestination === dest)
+                            ? exactDestination === dest
+                              ? 'bg-[#006233] text-white shadow-lg'
+                              : 'bg-gray-50 border border-gray-200 text-gray-600 hover:border-[#006233]/50 active:scale-95'
                             : 'bg-gray-50 border border-gray-200 text-gray-600 hover:border-[#006233]/50 active:scale-95'
                         }`}
                       >
-                        {exactDestination === dest && '✓ '}{dest}
+                        {exactDestination === dest && !destGpsAddress && '✓ '}{dest}
                       </button>
                     ))}
                   </div>
@@ -427,12 +454,12 @@ export default function PassengerTripDetail() {
         )}
       </div>
 
-      {/* Payment Modal - always available (Wave or Cash) */}
+      {/* Payment Modal */}
       <PaymentModal
         isOpen={paymentModalOpen}
         onClose={() => { setPaymentModalOpen(false); setCreatedReservationId(null) }}
         trip={trip}
-        driver={{ name: trip.driver.name, waveBusinessLink: trip.driver.waveBusinessLink }}
+        driver={{ name: trip.driver.name, waveBusinessLink: trip.driver.waveBusinessLink ?? null }}
         vehicle={trip.vehicle ? { brand: trip.vehicle.brand, model: trip.vehicle.model, color: trip.vehicle.color } : null}
         seats={seats}
         reservationId={createdReservationId || undefined}
