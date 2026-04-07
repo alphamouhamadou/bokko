@@ -134,11 +134,7 @@ export default function PassengerLogin() {
           </p>
         </div>
 
-        <div className="mt-4 p-3 bg-amber-50 rounded-2xl border border-amber-200">
-          <p className="text-xs text-amber-700 text-center">
-            📱 Compte test : <strong>78 123 45 67</strong>
-          </p>
-        </div>
+        
       </div>
     </div>
   )
