@@ -163,3 +163,11 @@ export async function sendSMS(phone: string, message: string): Promise<{ success
     return { success: false, error: error.message }
   }
 }
+
+export function getSMSProviderStatus() {
+  return {
+    enabled: process.env.ORANGE_SMS_ENABLED === 'true',
+    provider: 'orange-senegal',
+    configured: !!(process.env.ORANGE_SMS_AUTH_HEADER && process.env.ORANGE_SMS_API_URL),
+  }
+}
