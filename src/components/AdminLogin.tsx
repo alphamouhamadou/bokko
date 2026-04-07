@@ -125,11 +125,7 @@ export default function AdminLogin() {
           </Button>
         </form>
 
-        <div className="mt-6 p-3 bg-white/10 rounded-2xl border border-white/20">
-          <p className="text-xs text-white/60 text-center">
-            🔑 Compte admin : <strong className="text-white/80">77 000 00 00</strong> / <strong className="text-white/80">admin123</strong>
-          </p>
-        </div>
+        
       </div>
     </div>
   )
